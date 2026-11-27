@@ -31,7 +31,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   return (
     <div className="space-y-8">
       <section className="card relative overflow-hidden p-6 sm:p-8">
-        <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand/20 blur-3xl" />
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
           <Avatar config={p.avatar} size={128} rounded="xl" className="ring-1 ring-white/10" />
           <div className="min-w-0 flex-1">
@@ -66,7 +65,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
       {p.stats ? (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Games played" value={fmt(p.stats.games_played)} hint={`${p.stats.accuracy}% accuracy`} />
+          <Stat label="Games played" value={fmt(p.stats.games_played)} hint={`${p.stats.accuracy}% valid answers`} />
           <Stat label="Average score" value={fmt(p.stats.average_score)} />
           <Stat label="Highest score" value={fmt(p.stats.best_score)} hint={`${p.stats.perfect_games} perfect`} accent="#B4A2FF" />
           <Stat label="Longest streak" value={`${p.stats.best_streak}d`} hint={`current ${p.stats.current_streak}d`} accent="#FFB547" />

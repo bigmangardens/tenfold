@@ -109,6 +109,8 @@ export type PublicProfile = {
   recent: HistoryItem[] | null;
 };
 
+export type HistoryCell = { ok: boolean; pct: number | null; p: number } | null;
+
 export type QuestionPayload = {
   done: false;
   position: number;
@@ -116,22 +118,28 @@ export type QuestionPayload = {
   category: string;
   difficulty: number;
   prompt: string;
-  options: string[];
+  answer_count: number;
   time_limit_ms: number;
   remaining_ms: number;
   score_so_far: number;
-  history?: (boolean | null)[];
+  history?: HistoryCell[];
 };
+
+export type RevealItem = { answer: string; pct: number };
+export type Reveal = { total: number; top: RevealItem[]; rare: RevealItem[] };
 
 export type AnswerResult = {
   position: number;
-  correct: boolean;
+  valid: boolean;
   timed_out: boolean;
-  selected_index: number | null;
-  correct_index: number;
-  explanation: string;
+  typed: string | null;
+  answer: string | null;
+  corrected: boolean;
+  pct: number | null;
   points: number;
   elapsed_ms: number;
+  note: string | null;
+  reveal: Reveal;
   score_so_far: number;
   done: boolean;
   summary?: AttemptSummary;
@@ -155,13 +163,14 @@ export type ReviewAnswer = {
   category: string;
   difficulty: number;
   prompt: string;
-  options: string[];
-  correct_index: number;
-  selected_index: number | null;
-  is_correct: boolean;
+  typed: string | null;
+  answer: string | null;
+  pct: number | null;
+  valid: boolean;
   points: number;
   elapsed_ms: number;
-  explanation: string;
+  note: string | null;
+  reveal: Reveal;
 };
 
 export type AttemptReview = {
@@ -186,7 +195,7 @@ export type ShareCard = {
   score: number;
   correct_count: number;
   max_score: number;
-  grid: { c: boolean; p: number }[];
+  grid: { c: boolean; p: number; r: number | null }[];
   streak: number;
 };
 

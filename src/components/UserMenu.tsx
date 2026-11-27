@@ -28,7 +28,7 @@ export function UserMenu({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full p-0.5 pr-3 ring-1 ring-white/10 transition hover:ring-brand/50"
+        className="flex items-center gap-2 border-2 border-ink-600 p-0.5 pr-3 transition hover:border-brand"
         aria-haspopup="menu"
         aria-expanded={open}
       >

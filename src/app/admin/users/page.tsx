@@ -36,7 +36,7 @@ export default async function UsersAdmin({ searchParams }: { searchParams: Promi
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="text-left text-xs uppercase tracking-wider text-ink-400">
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-ink-700">
               <th className="px-4 py-3">Player</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Games</th>

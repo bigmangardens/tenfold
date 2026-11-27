@@ -74,7 +74,7 @@ export function QuizEditor({ date, bank, initial }: { date: string; bank: BankQu
         <p className="mt-2 text-xs text-ink-400">Aim for every category and roughly 3 easy, 4 medium, 3 hard, ordered easy to hard.</p>
         <ol className="mt-4 space-y-2">
           {picked.map((q, i) => (
-            <li key={q.id} className="flex items-center gap-2 rounded-lg border border-white/[0.06] p-2 text-sm">
+            <li key={q.id} className="flex items-center gap-2 rounded-lg border border-ink-700 p-2 text-sm">
               <span className="w-6 text-center text-ink-400">{i + 1}</span>
               <span title={CATEGORY_META[q.category]?.label}>{CATEGORY_META[q.category]?.icon}</span>
               <span className="flex-1 truncate">{q.prompt}</span>
@@ -112,7 +112,7 @@ export function QuizEditor({ date, bank, initial }: { date: string; bank: BankQu
               <button
                 disabled={ids.length >= 10}
                 onClick={() => setIds((a) => [...a, q.id])}
-                className="flex w-full items-center gap-2 rounded-lg border border-white/[0.05] p-2 text-left text-sm hover:border-brand/40 disabled:opacity-40"
+                className="flex w-full items-center gap-2 rounded-lg border border-ink-700 p-2 text-left text-sm hover:border-brand/40 disabled:opacity-40"
               >
                 <span>{CATEGORY_META[q.category]?.icon}</span>
                 <span className="flex-1 truncate">{q.prompt}</span>

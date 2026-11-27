@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { tierOf } from "@/lib/rarity";
 import { notFound } from "next/navigation";
 import { createAnonClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/Avatar";
@@ -42,21 +43,21 @@ export default async function SharedResult({ params }: { params: Promise<{ id: s
             {c.username} <Flag code={c.country} />
           </span>
         </Link>
-        <div className="mt-4 font-display text-6xl font-bold tabular-nums text-gradient">{fmt(c.score)}</div>
+        <div className="mt-4 font-arcade text-5xl tabular-nums text-gradient">{fmt(c.score)}</div>
         <div className="mt-1 text-sm text-ink-400">
-          {c.correct_count}/10 correct{c.streak > 1 ? ` · 🔥 ${c.streak}-day streak` : ""}
+          {c.correct_count}/10 valid{c.streak > 1 ? ` · 🔥 ${c.streak}-day streak` : ""}
         </div>
         <div className="mt-6 flex gap-1.5">
           {c.grid.map((g, i) => (
-            <span key={i} className={`h-3 flex-1 rounded-full ${g.c ? "bg-good" : "bg-bad"}`} />
+            <span key={i} className="h-4 flex-1 border-2 border-black" style={{ background: g.c ? (tierOf(g.r)?.color ?? "#A9A4C8") : "#FF5470" }} />
           ))}
         </div>
       </div>
       <h2 className="mt-10 font-display text-2xl font-bold">Think you can beat that?</h2>
-      <p className="mt-2 text-ink-300">Same ten questions for everyone today. Fifteen seconds each.</p>
+      <p className="mt-2 text-ink-300">Same ten prompts for everyone today. The rarer your answers, the higher you score.</p>
       <div className="mt-6 flex justify-center gap-3">
         <Link href="/play" className="btn-primary px-6 py-3">
-          Play today&apos;s quiz
+          Play today&apos;s hunt
         </Link>
         <Link href="/leaderboards" className="btn-ghost px-6 py-3">
           Leaderboard

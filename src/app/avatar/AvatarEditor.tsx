@@ -124,7 +124,7 @@ export function AvatarEditor({ initial, items, username }: { initial: AvatarConf
                 onClick={() => setConfig((c) => ({ ...c, [tab]: o.value }))}
                 title={o.unlocked ? o.name : `Locked: ${o.unlock_hint}`}
                 className={`group relative flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition ${
-                  active ? "border-brand bg-brand/10" : "border-white/[0.06] bg-white/[0.02] hover:border-white/20"
+                  active ? "border-brand bg-brand/10" : "border-ink-700 bg-white/[0.02] hover:border-white/20"
                 } ${o.unlocked ? "" : "cursor-not-allowed"}`}
                 style={!active && RARITY[o.rarity] ? { borderColor: RARITY[o.rarity] + "55" } : undefined}
               >

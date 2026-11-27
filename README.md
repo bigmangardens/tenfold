@@ -1,7 +1,9 @@
 # Tenfold
 
-**Ten questions. One shot a day.** A daily global trivia game: every player gets the same 10 general-knowledge
-questions each UTC day, 15 seconds each, scored on accuracy and speed and validated on the server.
+**Ten prompts. Rare answers win.** A daily global answer hunt: every player gets the same 10 open prompts each UTC
+day ("Name a country in Europe"), types any valid answer within 30 seconds, and scores by rarity: the fewer ranked
+players who gave the same answer, the more it is worth. Typos are autocorrected to the closest valid answer. All
+matching and scoring happens on the server. Retro pixel "night arcade" look with loot-tier rarity colours.
 
 Built with Next.js 15 (App Router), React 19, Tailwind CSS and Supabase (Postgres, Auth, Row Level Security).
 Deploys to Vercel.
@@ -10,11 +12,14 @@ Deploys to Vercel.
 
 - **Accounts**: email + password sign-up, email verification, login/logout, password reset, unique usernames,
   public profiles with per-field privacy settings.
-- **Daily quiz**: same 10 questions for everyone (balanced across 8 categories, easy to hard), 15s timer,
-  instant feedback with the correct answer and an explanation, one official attempt per day, resumable on reload
-  (the clock keeps running server-side). **Practice mode** uses past questions and never affects rankings.
-- **Scoring**: correct = 500 + up to 500 speed bonus (linear over 15s); wrong/timeout = 0; max 10,000.
-  Timing and scoring happen in Postgres; correct answers are never sent before you answer.
+- **Daily hunt**: same 10 prompts for everyone, 30s timer, free-text answers autocorrected server-side
+  (normalised text, aliases, then edit distance with a length-based threshold). One official attempt per day,
+  resumable on reload (the clock keeps running server-side). **Practice mode** uses the practice pool and never
+  affects rankings.
+- **Scoring by rarity**: each answer's share = (seed weight + ranked times given) / total for that prompt. Points =
+  100 + 900 x ln(100 / share%) / ln(200), capped at 1,000 (0.5% or rarer). Invalid or timed out = 0. Max 10,000.
+  Seed weights come from list order (answers are written most common first) and real answers take over as people
+  play. Only ranked answers count towards rarity. Loot tiers: Common, Uncommon, Rare, Epic, Legendary.
 - **Leaderboards**: daily, weekly, all-time, each filterable global / country / friends, with avatar, flag and rank.
 - **Streaks and achievements**: UTC-day participation streaks, best streak, 16 achievements (streaks, perfect
   games, speed, milestones, score) that unlock cosmetic rewards.
@@ -29,8 +34,8 @@ Deploys to Vercel.
 ## Security model
 
 - All gameplay runs through `SECURITY DEFINER` Postgres functions (`start_attempt`, `next_question`,
-  `submit_answer`) that check `auth.uid()`. The browser never receives `correct_index` before submitting.
-- Answer time = server `now()` − server `served_at`; reloading doesn't reset it; late answers (>16.5s) are timeouts.
+  `submit_answer`) that check `auth.uid()`. The browser never receives the list of valid answers before submitting; afterwards it sees only the top 3 and a few rare ones for that prompt.
+- Answer time = server `now()` − server `served_at`; reloading doesn't reset it; late answers (>31.5s) are timeouts.
 - A partial unique index enforces one ranked attempt per user per quiz.
 - Players have no write access to scores, stats, leaderboards, achievements or cosmetics. Profiles allow updates only
   to safe columns (country, bio, privacy flags) via column grants.
@@ -50,8 +55,8 @@ cp .env.example .env.local    # fill in API_URL and PUBLISHABLE_KEY printed by `
 npm run dev
 ```
 
-`supabase start` applies `supabase/migrations/*` and `supabase/seed.sql` (136 questions, cosmetics, achievements,
-30 demo players with a week of results). Verification emails land in Mailpit at http://127.0.0.1:54324.
+`supabase start` applies `supabase/migrations/*` (including 74 launch prompts) and `supabase/seed.sql` (cosmetics,
+achievements, 30 demo players). Verification emails land in Mailpit at http://127.0.0.1:54324.
 
 Make yourself an admin after signing up:
 
@@ -95,3 +100,9 @@ src/
   lib/                         Supabase clients, types, formatting, countries
   middleware.ts                session refresh and route protection
 ```
+
+## Prompts
+
+Admins add and edit prompts at `/admin/questions`: one valid answer per line, most common first, with extra accepted
+spellings after a `|` (`United Kingdom | UK | Britain`). Launch prompts live in `supabase/prompts/prompts.py`;
+`python3 supabase/prompts/build.py` regenerates `supabase/migrations/20261127000004_prompts.sql`.

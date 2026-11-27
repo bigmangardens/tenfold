@@ -4,6 +4,7 @@ import { createAnonClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/Avatar";
 import { fmt } from "@/lib/format";
 import { countryName } from "@/lib/countries";
+import { tierOf } from "@/lib/rarity";
 import type { ShareCard } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -37,9 +38,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 64,
-          background: "linear-gradient(135deg, #0C0E15 0%, #1B1745 55%, #0B2B3A 100%)",
-          color: "#EEF0F7",
-          fontFamily: "sans-serif",
+          background: "linear-gradient(180deg, #0B0820 0%, #140F36 50%, #3A1D52 100%)",
+          color: "#F4F1FF",
+          fontFamily: "monospace",
+          border: "12px solid #3A2F7E",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -48,30 +50,30 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 16,
-                background: "linear-gradient(135deg, #9B83FF, #22D3EE)",
+                background: "#FFC83D",
+                border: "6px solid #2A1060",
                 display: "flex",
               }}
             />
-            <div style={{ fontSize: 40, fontWeight: 800, display: "flex" }}>Tenfold</div>
+            <div style={{ fontSize: 44, fontWeight: 800, display: "flex", color: "#FFC83D", letterSpacing: 6 }}>TENFOLD</div>
           </div>
-          <div style={{ fontSize: 30, color: "#9AA2BD", display: "flex" }}>Daily quiz no. {c.quiz_number}</div>
+          <div style={{ fontSize: 30, color: "#B5ACE0", display: "flex" }}>Daily hunt no. {c.quiz_number}</div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 56 }}>
-          <div style={{ display: "flex", width: 220, height: 220, borderRadius: 40, overflow: "hidden" }}>
+          <div style={{ display: "flex", width: 220, height: 220, overflow: "hidden" }}>
             {flatten(<Avatar config={c.avatar} size={220} rounded="xl" />)}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 40, color: "#C9CEDF", display: "flex", gap: 14 }}>
+            <div style={{ fontSize: 40, color: "#D8D2F4", display: "flex", gap: 14 }}>
               {c.username}
-              {c.country ? <span style={{ color: "#6B7390" }}>{countryName(c.country)}</span> : null}
+              {c.country ? <span style={{ color: "#8C82C4" }}>{countryName(c.country)}</span> : null}
             </div>
-            <div style={{ fontSize: 132, fontWeight: 800, lineHeight: 1, display: "flex", color: "#B4A2FF" }}>
+            <div style={{ fontSize: 132, fontWeight: 800, lineHeight: 1, display: "flex", color: "#FFC83D" }}>
               {fmt(c.score)}
             </div>
-            <div style={{ fontSize: 30, color: "#9AA2BD", display: "flex" }}>
-              {c.correct_count}/10 correct{c.streak > 1 ? `, ${c.streak}-day streak` : ""}
+            <div style={{ fontSize: 30, color: "#B5ACE0", display: "flex" }}>
+              {c.correct_count}/10 valid{c.streak > 1 ? `, ${c.streak}-day streak` : ""}
             </div>
           </div>
         </div>
@@ -83,8 +85,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
               style={{
                 flex: 1,
                 height: 28,
-                borderRadius: 14,
-                background: g.c ? "#34D399" : "#F87171",
+                border: "4px solid #000",
+                background: g.c ? (tierOf(g.r)?.color ?? "#A9A4C8") : "#FF5470",
                 display: "flex",
               }}
             />

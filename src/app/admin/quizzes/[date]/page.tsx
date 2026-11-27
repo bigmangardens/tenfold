@@ -13,11 +13,11 @@ export default async function QuizDetail({ params }: { params: Promise<{ date: s
 
   const { data: quiz } = await supabase
     .from("daily_quizzes")
-    .select("id,auto_generated,daily_quiz_questions(position,question_id,questions(id,category,difficulty,prompt,options,correct_index,explanation))")
+    .select("id,auto_generated,daily_quiz_questions(position,question_id,questions(id,category,difficulty,prompt,explanation))")
     .eq("quiz_date", date)
     .maybeSingle();
 
-  type Row = { position: number; question_id: number; questions: BankQuestion & { options: string[]; correct_index: number; explanation: string } };
+  type Row = { position: number; question_id: number; questions: BankQuestion & { explanation: string | null } };
   const rows = ((quiz?.daily_quiz_questions ?? []) as unknown as Row[]).sort((a, b) => a.position - b.position);
 
   let bank: BankQuestion[] = [];
@@ -65,14 +65,6 @@ export default async function QuizDetail({ params }: { params: Promise<{ date: s
                 </Link>
               </div>
               <p className="mt-1.5 font-medium">{r.questions.prompt}</p>
-              <div className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
-                {r.questions.options.map((o, i) => (
-                  <span key={i} className={i === r.questions.correct_index ? "text-good" : "text-ink-400"}>
-                    {i === r.questions.correct_index ? "✓ " : "· "}
-                    {o}
-                  </span>
-                ))}
-              </div>
               <p className="mt-2 text-xs text-ink-400">{r.questions.explanation}</p>
             </li>
           ))}

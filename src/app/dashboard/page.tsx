@@ -36,7 +36,6 @@ export default async function DashboardPage() {
 
       <section className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
         <div className="card relative overflow-hidden p-6 sm:p-8">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/25 blur-3xl" />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
             <Link href="/avatar" className="group relative self-start">
               <Avatar config={d.avatar} size={96} rounded="xl" className="ring-1 ring-white/10" />
@@ -46,7 +45,7 @@ export default async function DashboardPage() {
             </Link>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-sm text-ink-400">
-                <span>Quiz #{t.quiz_number}</span>·<span>{formatDate(t.quiz_date, { weekday: "long", month: "long", day: "numeric" })}</span>
+                <span>Hunt #{t.quiz_number}</span>·<span>{formatDate(t.quiz_date, { weekday: "long", month: "long", day: "numeric" })}</span>
               </div>
               <h1 className="mt-1 flex items-center gap-2 truncate font-display text-3xl font-bold tracking-tight">
                 {d.profile.username} <Flag code={d.profile.country} className="text-2xl" />
@@ -73,19 +72,19 @@ export default async function DashboardPage() {
                     </Link>
                   </div>
                   <p className="w-full text-sm text-ink-400">
-                    Next quiz in <Countdown className="font-semibold text-white" />
+                    Next hunt in <Countdown className="font-semibold text-white" />
                   </p>
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">
                   <p className="text-ink-300">
                     {t.status === "in_progress"
-                      ? "You have a quiz in progress. The clock keeps running, so jump back in."
-                      : `${fmt(t.players)} players have already taken today's quiz.`}
+                      ? "You have a hunt in progress. The clock keeps running, so jump back in."
+                      : `${fmt(t.players)} players have already played today's hunt.`}
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <Link href="/play" className="btn-primary px-7 py-3 text-base">
-                      {t.status === "in_progress" ? "Resume quiz" : "Play today's quiz"} →
+                      {t.status === "in_progress" ? "Resume hunt" : "Play today's hunt"} →
                     </Link>
                     <span className="text-sm text-ink-400">
                       Closes in <Countdown className="font-semibold text-white" />
@@ -114,7 +113,7 @@ export default async function DashboardPage() {
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Games played" value={fmt(s.games_played)} hint={`${fmt(s.practice_games)} practice`} />
-        <Stat label="Average score" value={fmt(s.average_score)} hint={`${s.accuracy}% accuracy`} />
+        <Stat label="Average score" value={fmt(s.average_score)} hint={`${s.accuracy}% valid answers`} />
         <Stat label="Best score" value={fmt(s.best_score)} hint={`${s.perfect_games} perfect`} accent="#B4A2FF" />
         <Stat label="Best streak" value={`${s.best_streak}d`} hint="consecutive days" accent="#FFB547" />
       </section>
@@ -150,14 +149,14 @@ export default async function DashboardPage() {
                 </div>
               ))
             ) : (
-              <Empty>Finish your first quiz to earn one.</Empty>
+              <Empty>Finish your first hunt to earn one.</Empty>
             )}
           </div>
         </div>
       </section>
 
       <section>
-        <SectionTitle>Recent quizzes</SectionTitle>
+        <SectionTitle>Recent hunts</SectionTitle>
         <div className="card overflow-hidden">
           {d.history.length ? (
             <ul>
@@ -165,7 +164,7 @@ export default async function DashboardPage() {
                 <li key={h.attempt_id} className="list-row">
                   <span className="w-20 text-sm text-ink-400">#{h.quiz_number}</span>
                   <span className="flex-1 text-sm">{formatDate(h.quiz_date, { weekday: "short", month: "short", day: "numeric" })}</span>
-                  <span className="hidden text-sm text-ink-400 sm:block">{h.correct_count}/10 correct</span>
+                  <span className="hidden text-sm text-ink-400 sm:block">{h.correct_count}/10 valid</span>
                   <span className="w-20 text-right font-display font-semibold tabular-nums">{fmt(h.score)}</span>
                   <Link href={`/results/${h.attempt_id}`} className="text-sm text-brand-400 hover:underline">
                     Review
@@ -174,7 +173,7 @@ export default async function DashboardPage() {
               ))}
             </ul>
           ) : (
-            <Empty>No ranked quizzes yet.</Empty>
+            <Empty>No ranked hunts yet.</Empty>
           )}
         </div>
       </section>

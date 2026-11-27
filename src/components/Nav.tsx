@@ -23,7 +23,7 @@ export async function Nav() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-ink-950/75 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b-[3px] border-ink-600 bg-ink-950/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
           <Logo href={user ? "/dashboard" : "/"} />
           {user && <NavLinks />}

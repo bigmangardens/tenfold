@@ -122,7 +122,7 @@ export function SettingsForm({ profile, email }: { profile: SettingsProfile; ema
           />
         </div>
 
-        <div className="divide-y divide-white/[0.05] border-t border-white/[0.05] pt-2">
+        <div className="divide-y divide-white/[0.05] border-t border-ink-700 pt-2">
           <Toggle label="Show my country" hint="Flag on leaderboards and profile; needed for country boards" checked={p.show_country} onChange={(v) => setP({ ...p, show_country: v })} />
           <Toggle label="Show my stats" hint="Games, scores, streaks and rankings on your profile" checked={p.show_stats} onChange={(v) => setP({ ...p, show_stats: v })} />
           <Toggle label="Show recent results" hint="Your last 10 daily scores" checked={p.show_history} onChange={(v) => setP({ ...p, show_history: v })} />

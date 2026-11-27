@@ -32,7 +32,7 @@ export function MobileTabs() {
   const path = usePathname();
   if (path.startsWith("/play") || path.startsWith("/practice")) return null;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.06] bg-ink-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink-600 bg-ink-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
       <div className="mx-auto flex max-w-md justify-around">
         {LINKS.map((l) => {
           const active = isActive(path, l.href);

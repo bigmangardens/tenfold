@@ -5,6 +5,7 @@ import { Countdown } from "@/components/Countdown";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { ScoringRules } from "@/components/ScoringRules";
 import { Avatar } from "@/components/Avatar";
+import { PixelScene } from "@/components/PixelScene";
 import { CATEGORY_META, fmt } from "@/lib/format";
 import type { LeaderboardRow } from "@/lib/types";
 
@@ -22,29 +23,28 @@ export default async function Landing() {
 
   return (
     <div className="space-y-20">
-      <section className="grid items-center gap-10 pt-4 md:grid-cols-[1.15fr_1fr] md:pt-10">
-        <div className="animate-fade-up">
-          <span className="chip border-brand/30 bg-brand/10 text-brand-400">
-            Quiz #{info?.quiz_number ?? "…"} is live · resets in <Countdown className="font-semibold text-white" />
+      <section className="card relative -mx-4 overflow-hidden border-x-0 px-4 pb-0 pt-10 sm:mx-0 sm:border-x-[3px] sm:pt-14">
+        <div className="relative z-10 mx-auto max-w-2xl text-center">
+          <span className="chip border-brand text-brand">
+            Hunt #{info?.quiz_number ?? "…"} is live · resets in <Countdown className="font-bold text-white" />
           </span>
-          <h1 className="mt-5 font-display text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl">
-            Ten questions.
-            <br />
-            <span className="text-gradient">One shot a day.</span>
-          </h1>
-          <p className="mt-5 max-w-lg text-lg text-ink-300">
-            Every day the whole world gets the same ten general-knowledge questions. Fifteen seconds each. Fast and right
-            wins. Build your streak, dress up your avatar and climb the global board.
+          <h1 className="arcade-title mt-8 text-4xl leading-tight sm:text-6xl">Tenfold</h1>
+          <p className="mt-6 font-arcade text-[10px] uppercase leading-relaxed tracking-widest text-aqua sm:text-xs">
+            The daily rare-answer hunt
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/signup" className="btn-primary px-6 py-3 text-base">
-              Play today&apos;s quiz
+          <p className="mx-auto mt-6 max-w-lg text-lg text-ink-200">
+            Ten open prompts. Thirty seconds each. Type any valid answer, and the fewer players who think of it, the more loot
+            it&apos;s worth.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link href="/signup" className="btn-primary px-7 py-4 text-xs">
+              ▶ Press start
             </Link>
-            <Link href="/leaderboards" className="btn-ghost px-6 py-3 text-base">
-              See the leaderboard
+            <Link href="/how-to-play" className="btn-ghost px-7 py-4 text-xs">
+              How to play
             </Link>
           </div>
-          <div className="mt-8 flex items-center gap-6 text-sm text-ink-400">
+          <div className="mt-6 flex justify-center gap-6 text-ink-400">
             <span>
               <b className="text-white">{fmt(info?.players_today)}</b> played today
             </span>
@@ -53,30 +53,38 @@ export default async function Landing() {
             </span>
           </div>
         </div>
+        <PixelScene className="pointer-events-none relative -mx-4 mt-6 block h-44 w-[calc(100%+2rem)] sm:h-56" />
+      </section>
 
-        <div className="card relative animate-fade-up overflow-hidden p-6 [animation-delay:120ms]">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-brand/20 blur-3xl" />
-          <div className="flex items-center justify-between text-xs text-ink-400">
+      <section className="grid items-center gap-8 md:grid-cols-[1fr_1.1fr]">
+        <div>
+          <h2 className="font-arcade text-sm uppercase leading-relaxed text-brand">Obvious is cheap. Rare is gold.</h2>
+          <p className="mt-4 text-lg text-ink-300">
+            Everyone says France. Almost nobody says Liechtenstein. Every valid answer scores, but the rarer it is among today&apos;s
+            players, the higher its loot tier. Typos are autocorrected, so you only need to know it, not spell it perfectly.
+          </p>
+        </div>
+        <div className="card p-5">
+          <div className="flex items-center justify-between text-sm text-ink-400">
             <span className="chip">🧭 Geography</span>
-            <span>Question 4 of 10</span>
+            <span className="font-arcade text-[10px]">4/10</span>
           </div>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
-            <div className="h-full w-[62%] rounded-full bg-gradient-to-r from-brand to-aqua" />
-          </div>
-          <p className="mt-6 font-display text-xl font-semibold">Which of these countries has the most natural lakes?</p>
-          <div className="mt-5 grid gap-2.5">
-            {["Russia", "Canada", "United States", "Finland"].map((o, i) => (
-              <div
-                key={o}
-                className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
-                  i === 1 ? "border-good/50 bg-good/10 text-white" : "border-white/[0.07] bg-white/[0.02] text-ink-200"
-                }`}
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white/[0.06] text-xs font-bold">
-                  {"ABCD"[i]}
+          <p className="mt-4 text-2xl font-bold">Name a country in Europe</p>
+          <div className="mt-4 space-y-2">
+            {(
+              [
+                ["France", 18, "#A9A4C8", 390],
+                ["Portugal", 4.1, "#4EA8FF", 640],
+                ["Liechtenstein", 0.3, "#FFC83D", 1000],
+              ] as [string, number, string, number][]
+            ).map(([a, pct, c, pts]) => (
+              <div key={a} className="flex items-center gap-3 border-2 border-ink-700 bg-ink-900 px-3 py-2">
+                <span className="h-3 w-3 border-2 border-black" style={{ background: c }} />
+                <span className="flex-1 text-lg">{a}</span>
+                <span className="text-sm text-ink-400">{pct}% of players</span>
+                <span className="w-16 text-right font-arcade text-xs" style={{ color: c }}>
+                  +{pts}
                 </span>
-                {o}
-                {i === 1 && <span className="ml-auto font-semibold text-good">+912</span>}
               </div>
             ))}
           </div>
@@ -85,29 +93,29 @@ export default async function Landing() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["🌍", "One quiz, whole world", "Same ten questions for every player, resetting at midnight UTC."],
-          ["⚡", "Speed counts", "Correct answers score 500 plus a speed bonus of up to 500 more."],
+          ["🌍", "Same ten for everyone", "One set of prompts for the whole world, resetting at midnight UTC."],
+          ["💎", "Rarity is the score", "Answers are scored by how few players gave them. The board shifts as people play."],
           ["🔥", "Keep the streak alive", "Play daily to build streaks and unlock rare avatar cosmetics."],
         ].map(([icon, title, body]) => (
           <div key={title} className="card p-6">
             <div className="text-3xl">{icon}</div>
-            <h3 className="mt-3 font-display text-lg font-semibold">{title}</h3>
-            <p className="mt-1.5 text-sm text-ink-300">{body}</p>
+            <h3 className="mt-3 text-xl font-bold">{title}</h3>
+            <p className="mt-1.5 text-ink-300">{body}</p>
           </div>
         ))}
       </section>
 
       <section className="grid gap-8 md:grid-cols-2">
         <div>
-          <h2 className="font-display text-2xl font-bold">Today&apos;s top five</h2>
-          <p className="mt-1 text-sm text-ink-400">Live global ranking for quiz #{info?.quiz_number}.</p>
+          <h2 className="font-arcade text-sm uppercase">Today&apos;s top five</h2>
+          <p className="mt-2 text-ink-400">Live global ranking for hunt #{info?.quiz_number}.</p>
           <div className="card mt-5 overflow-hidden">
             <LeaderboardTable rows={rows} compact />
           </div>
         </div>
         <div>
-          <h2 className="font-display text-2xl font-bold">How scoring works</h2>
-          <p className="mt-1 text-sm text-ink-400">Transparent, and validated on the server.</p>
+          <h2 className="font-arcade text-sm uppercase">Loot tiers</h2>
+          <p className="mt-2 text-ink-400">Scored by rarity, checked on our servers.</p>
           <div className="mt-5">
             <ScoringRules />
           </div>
@@ -122,11 +130,11 @@ export default async function Landing() {
             { skin: "s4", hair: "mohawk", hairColor: "neon", outfit: "jacket", outfitColor: "coral", background: "aurora", accessory: "shades" },
             { skin: "s8", hair: "none", outfit: "robe", hat: "wizard", background: "cosmos", eyes: "star" },
           ].map((c, i) => (
-            <Avatar key={i} config={c} size={64} className="ring-4 ring-ink-850" />
+            <Avatar key={i} config={c} size={64} className="border-[3px] border-black" />
           ))}
         </div>
         <div className="flex-1">
-          <h3 className="font-display text-xl font-semibold">Make it yours</h3>
+          <h3 className="text-xl font-bold">Make it yours</h3>
           <p className="mt-1 text-sm text-ink-300">
             Dozens of free styles, plus rare cosmetics you can only earn by playing: crowns, wizard hats and cosmic
             backdrops. Nothing to buy, ever.
@@ -137,7 +145,7 @@ export default async function Landing() {
         </Link>
       </section>
 
-      <footer className="flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 text-xs text-ink-400 sm:flex-row">
+      <footer className="flex flex-col items-center justify-between gap-3 border-t-[3px] border-ink-700 pt-6 text-sm text-ink-400 sm:flex-row">
         <span>© {new Date().getUTCFullYear()} Tenfold</span>
         <div className="flex gap-4">
           {Object.values(CATEGORY_META).map((c) => (

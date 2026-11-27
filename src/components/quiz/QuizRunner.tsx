@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { CATEGORY_META, DIFFICULTY_LABEL, fmt, friendlyError, ordinal } from "@/lib/format";
-import type { AnswerResult, AttemptSummary, QuestionPayload } from "@/lib/types";
+import { CATEGORY_META, fmt, friendlyError, ordinal } from "@/lib/format";
+import { fmtPct, tierOf } from "@/lib/rarity";
+import type { AnswerResult, AttemptSummary, HistoryCell, QuestionPayload, RevealItem } from "@/lib/types";
 
 type Phase = "intro" | "loading" | "question" | "feedback" | "summary" | "error";
 type Mode = "ranked" | "practice";
 
-const AUTO_ADVANCE_MS = 5000;
+const AUTO_ADVANCE_MS = 12000;
 
 export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode; resuming?: boolean; quizNumber: number }) {
   const supabase = useRef(createClient()).current;
@@ -17,15 +18,18 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [q, setQ] = useState<QuestionPayload | null>(null);
   const [result, setResult] = useState<AnswerResult | null>(null);
+  const [results, setResults] = useState<AnswerResult[]>([]);
   const [summary, setSummary] = useState<AttemptSummary | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15000);
-  const [history, setHistory] = useState<(boolean | null)[]>(Array(10).fill(null));
+  const [timeLeft, setTimeLeft] = useState(30000);
+  const [history, setHistory] = useState<HistoryCell[]>(Array(10).fill(null));
   const [error, setError] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const deadline = useRef(0);
   const submittingRef = useRef(false);
+  const textRef = useRef("");
+  const feedbackAt = useRef(0);
 
   const fail = (e: unknown) => {
     setError(friendlyError(e));
@@ -35,8 +39,9 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
   const loadNext = useCallback(
     async (id: string) => {
       setPhase("loading");
-      setSelected(null);
       setResult(null);
+      setText("");
+      textRef.current = "";
       const { data, error } = await supabase.rpc("next_question", { p_attempt: id });
       if (error) return fail(error);
       if (data.done) {
@@ -64,38 +69,39 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
   };
 
   const submit = useCallback(
-    async (choice: number | null) => {
+    async (answer: string | null) => {
       if (!attemptId || !q || submittingRef.current) return;
       submittingRef.current = true;
       setSubmitting(true);
-      setSelected(choice);
       const { data, error } = await supabase.rpc("submit_answer", {
         p_attempt: attemptId,
         p_position: q.position,
-        p_choice: choice,
+        p_text: answer,
       });
       submittingRef.current = false;
       setSubmitting(false);
       if (error) {
-        // Already answered (e.g. double tap or expired on reload): move on.
+        // Already answered (e.g. double submit or expired on reload): move on.
         if (/ALREADY_ANSWERED|QUESTION_NOT_SERVED/.test(error.message)) return loadNext(attemptId);
         return fail(error);
       }
       const r = data as AnswerResult;
       setResult(r);
+      setResults((rs) => [...rs, r]);
       setScore(r.score_so_far);
       setHistory((h) => {
         const n = [...h];
-        n[r.position - 1] = r.correct;
+        n[r.position - 1] = { ok: r.valid, pct: r.pct, p: r.points };
         return n;
       });
       if (r.summary) setSummary(r.summary);
+      feedbackAt.current = performance.now();
       setPhase("feedback");
     },
     [attemptId, q, supabase, loadNext],
   );
 
-  // Countdown ticker
+  // Countdown: when time runs out, whatever is typed gets submitted.
   useEffect(() => {
     if (phase !== "question") return;
     const t = setInterval(() => {
@@ -103,20 +109,18 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
       setTimeLeft(left);
       if (left <= 0) {
         clearInterval(t);
-        submit(null);
+        submit(textRef.current.trim() || null);
       }
-    }, 50);
+    }, 100);
     return () => clearInterval(t);
   }, [phase, submit]);
 
   const advance = useCallback(() => {
     if (!attemptId) return;
-    if (result?.done) {
-      setPhase("summary");
-    } else loadNext(attemptId);
+    if (result?.done) setPhase("summary");
+    else loadNext(attemptId);
   }, [attemptId, result, loadNext]);
 
-  // Auto-advance after feedback
   const [autoLeft, setAutoLeft] = useState(AUTO_ADVANCE_MS);
   useEffect(() => {
     if (phase !== "feedback") return;
@@ -129,31 +133,27 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
         clearInterval(t);
         advance();
       }
-    }, 50);
+    }, 100);
     return () => clearInterval(t);
   }, [phase, advance]);
 
-  // Keyboard controls
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (phase === "question" && !submitting) {
-        const idx = ["1", "2", "3", "4"].indexOf(e.key) >= 0 ? Number(e.key) - 1 : "abcd".indexOf(e.key.toLowerCase());
-        if (idx >= 0 && idx < 4) submit(idx);
-      } else if (phase === "feedback" && (e.key === "Enter" || e.key === " ")) {
+      if (phase === "feedback" && e.key === "Enter" && performance.now() - feedbackAt.current > 500) {
         e.preventDefault();
         advance();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, submitting, submit, advance]);
+  }, [phase, advance]);
 
   if (phase === "intro") return <Intro mode={mode} resuming={resuming} quizNumber={quizNumber} onStart={start} />;
   if (phase === "error")
     return (
       <div className="card mx-auto max-w-lg p-8 text-center">
-        <div className="text-4xl">😵</div>
-        <p className="mt-3 text-ink-200">{error}</p>
+        <div className="font-arcade text-2xl text-bad">GAME OVER?</div>
+        <p className="mt-4 text-ink-200">{error}</p>
         <div className="mt-6 flex justify-center gap-3">
           {attemptId && (
             <button className="btn-primary" onClick={() => loadNext(attemptId)}>
@@ -166,167 +166,218 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
         </div>
       </div>
     );
-  if (phase === "summary" && summary && attemptId) return <Summary s={summary} attemptId={attemptId} />;
+  if (phase === "summary" && summary && attemptId) return <Summary s={summary} attemptId={attemptId} results={results} />;
 
   const meta = q ? CATEGORY_META[q.category] : null;
-  const pct = q ? timeLeft / q.time_limit_ms : 1;
+  const limit = q?.time_limit_ms ?? 30000;
+  const pct = timeLeft / limit;
   const secs = Math.ceil(timeLeft / 1000);
-  const urgent = phase === "question" && timeLeft < 5000;
+  const urgent = phase === "question" && timeLeft < 8000;
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex gap-1.5" aria-label="Progress">
-          {history.map((h, i) => (
-            <span
-              key={i}
-              className={`h-2 w-5 rounded-full transition-colors sm:w-7 ${
-                h === true
-                  ? "bg-good"
-                  : h === false
-                    ? "bg-bad"
-                    : q && i === q.position - 1
-                      ? "bg-white"
-                      : "bg-white/10"
-              }`}
-            />
-          ))}
-        </div>
+      <div className="flex items-end justify-between gap-4">
+        <ProgressBlocks history={history} current={q?.position} />
         <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wider text-ink-400">{mode === "practice" ? "Practice" : "Score"}</div>
-          <div className="font-display text-xl font-bold tabular-nums">{fmt(score)}</div>
+          <div className="font-arcade text-[9px] uppercase text-ink-400">{mode === "practice" ? "Practice" : "Score"}</div>
+          <div className="font-arcade text-lg tabular-nums text-brand">{fmt(score)}</div>
         </div>
       </div>
 
       {phase === "loading" || !q ? (
-        <div className="card mt-6 h-80 animate-pulse" />
+        <div className="card mt-6 h-72 animate-pulse" />
       ) : (
         <div key={q.position} className="mt-6 animate-fade-up">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="chip" style={{ borderColor: meta?.color + "55", color: meta?.color }}>
-                {meta?.icon} {meta?.label}
-              </span>
-              <span className="chip">{DIFFICULTY_LABEL[q.difficulty]}</span>
-            </div>
-            <span className="text-sm text-ink-400">
-              {q.position} / {q.total}
+            <span className="chip" style={{ borderColor: meta?.color, color: meta?.color }}>
+              {meta?.icon} {meta?.label}
+            </span>
+            <span className="font-arcade text-[10px] text-ink-400">
+              {q.position}/{q.total}
             </span>
           </div>
 
-          <div className="card mt-4 p-5 sm:p-8">
-            <div className="flex items-start gap-5">
-              <h1 className="flex-1 font-display text-xl font-semibold leading-snug sm:text-2xl">{q.prompt}</h1>
-              <TimerRing pct={phase === "question" ? pct : (result?.elapsed_ms ?? 0) <= 15000 ? 1 - (result?.elapsed_ms ?? 0) / 15000 : 0} label={phase === "question" ? String(secs) : result?.timed_out ? "0" : result?.correct ? "✓" : "✕"} urgent={urgent || (phase !== "question" && !result?.correct)} done={phase !== "question"} />
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {q.options.map((opt, i) => {
-                const isCorrect = result && i === result.correct_index;
-                const isWrongPick = result && i === selected && !result.correct;
-                const state = result
-                  ? isCorrect
-                    ? "border-good/60 bg-good/15 text-white"
-                    : isWrongPick
-                      ? "border-bad/60 bg-bad/15 text-white animate-shake"
-                      : "border-white/[0.05] bg-white/[0.01] text-ink-400"
-                  : selected === i
-                    ? "border-brand bg-brand/15 text-white"
-                    : "border-white/[0.08] bg-white/[0.02] text-ink-100 hover:border-brand/50 hover:bg-brand/[0.07]";
-                return (
-                  <button
-                    key={i}
-                    disabled={phase !== "question" || submitting}
-                    onClick={() => submit(i)}
-                    className={`group flex min-h-[3.5rem] items-center gap-3 rounded-xl border px-4 py-3 text-left text-[15px] font-medium transition ${state} ${isCorrect ? "animate-pop" : ""}`}
-                  >
-                    <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                        isCorrect ? "bg-good text-ink-950" : isWrongPick ? "bg-bad text-ink-950" : "bg-white/[0.06] text-ink-300"
-                      }`}
-                    >
-                      {isCorrect ? "✓" : isWrongPick ? "✕" : "ABCD"[i]}
-                    </span>
-                    <span className="flex-1">{opt}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Time bar */}
-            {phase === "question" && (
-              <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="card mt-3 p-5 sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-bold leading-snug sm:text-3xl">{q.prompt}</h1>
+              {phase === "question" && (
                 <div
-                  className={`h-full rounded-full ${urgent ? "bg-bad" : "bg-gradient-to-r from-brand to-aqua"}`}
-                  style={{ width: `${pct * 100}%` }}
-                />
-              </div>
+                  className={`shrink-0 border-[3px] border-black px-2.5 py-2 font-arcade text-lg tabular-nums ${urgent ? "animate-blink bg-bad text-ink-950" : "bg-ink-950 text-brand"}`}
+                  role="timer"
+                  aria-label={`${secs} seconds left`}
+                >
+                  {String(secs).padStart(2, "0")}
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-sm text-ink-400">
+              {q.answer_count} valid answers. The fewer players who think of yours, the more it scores.
+            </p>
+
+            {phase === "question" && (
+              <>
+                <form
+                  className="mt-6 flex flex-col gap-3 sm:flex-row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (text.trim()) submit(text.trim());
+                  }}
+                >
+                  <input
+                    autoFocus
+                    value={text}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      textRef.current = e.target.value;
+                    }}
+                    maxLength={80}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    enterKeyHint="send"
+                    placeholder="Type a rare answer…"
+                    aria-label="Your answer"
+                    className="input flex-1 py-3 text-xl"
+                    disabled={submitting}
+                  />
+                  <button className="btn-primary px-6 py-4" disabled={submitting || !text.trim()}>
+                    {submitting ? "Checking…" : "Lock in"}
+                  </button>
+                </form>
+                <TimeBar pct={pct} urgent={urgent} />
+                <p className="mt-3 text-center text-sm text-ink-400">Spelling slips are autocorrected to the closest valid answer.</p>
+              </>
             )}
 
             {phase === "feedback" && result && (
-              <div className="mt-6 animate-fade-up rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className={`font-display text-lg font-bold ${result.correct ? "text-good" : "text-bad"}`}>
-                    {result.correct ? "Correct!" : result.timed_out ? "Out of time" : "Not quite"}
-                    {result.correct && (
-                      <span className="ml-2 text-white">
-                        +{fmt(result.points)}{" "}
-                        <span className="text-sm font-medium text-ink-400">in {(result.elapsed_ms / 1000).toFixed(1)}s</span>
-                      </span>
-                    )}
-                  </div>
+              <div className="mt-6 animate-fade-up space-y-5">
+                <ResultBanner r={result} />
+                <RevealLists top={result.reveal.top} rare={result.reveal.rare} total={result.reveal.total} mine={result.answer} />
+                {result.note && <p className="border-l-4 border-ink-600 pl-3 text-ink-300">{result.note}</p>}
+                <div className="flex justify-end">
                   <button onClick={advance} className="btn-primary relative overflow-hidden">
-                    <span
-                      className="absolute inset-y-0 left-0 bg-white/15"
-                      style={{ width: `${(1 - autoLeft / AUTO_ADVANCE_MS) * 100}%` }}
-                    />
-                    <span className="relative">{result.done ? "See results" : "Next question"} →</span>
+                    <span className="absolute inset-y-0 left-0 bg-black/15" style={{ width: `${(1 - autoLeft / AUTO_ADVANCE_MS) * 100}%` }} />
+                    <span className="relative">{result.done ? "See results" : "Next prompt"} ▶</span>
                   </button>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-ink-300">{result.explanation}</p>
               </div>
             )}
           </div>
-          <p className="mt-3 hidden text-center text-xs text-ink-500 sm:block">
-            Tip: press 1–4 to answer, Enter to continue
-          </p>
+          {phase === "feedback" && <p className="mt-3 hidden text-center text-sm text-ink-500 sm:block">Press Enter to continue</p>}
         </div>
       )}
     </div>
   );
 }
 
-function TimerRing({ pct, label, urgent, done }: { pct: number; label: string; urgent: boolean; done: boolean }) {
-  const r = 22;
-  const c = 2 * Math.PI * r;
+export function ProgressBlocks({ history, current }: { history: HistoryCell[]; current?: number }) {
   return (
-    <div className="relative h-14 w-14 shrink-0" role="timer" aria-label={`${label} seconds left`}>
-      <svg viewBox="0 0 52 52" className="-rotate-90">
-        <circle cx="26" cy="26" r={r} stroke="rgba(255,255,255,.08)" strokeWidth="4" fill="none" />
-        <circle
-          cx="26"
-          cy="26"
-          r={r}
-          stroke={urgent ? "#F87171" : done ? "#34D399" : "url(#tf-timer)"}
-          strokeWidth="4"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - Math.max(0, Math.min(1, pct)))}
-        />
-        <defs>
-          <linearGradient id="tf-timer">
-            <stop offset="0" stopColor="#7C5CFF" />
-            <stop offset="1" stopColor="#22D3EE" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <span
-        className={`absolute inset-0 flex items-center justify-center font-display text-lg font-bold tabular-nums ${urgent ? "text-bad" : ""}`}
-      >
-        {label}
-      </span>
+    <div className="flex gap-1.5" aria-label="Progress">
+      {history.map((h, i) => {
+        const t = h?.ok ? tierOf(h.pct) : null;
+        const bg = h ? (h.ok ? t?.color : "#FF5470") : current === i + 1 ? "#F4F1FF" : "#2A2160";
+        return (
+          <span
+            key={i}
+            title={h ? (h.ok ? `${t?.label} · +${h.p}` : "Miss") : undefined}
+            className="h-4 w-5 border-2 border-black sm:w-7"
+            style={{ background: bg }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function TimeBar({ pct, urgent }: { pct: number; urgent: boolean }) {
+  const cells = 30;
+  const lit = Math.ceil(Math.max(0, Math.min(1, pct)) * cells);
+  return (
+    <div className="mt-5 flex gap-[3px]" aria-hidden>
+      {Array.from({ length: cells }, (_, i) => (
+        <span key={i} className="h-3 flex-1" style={{ background: i < lit ? (urgent ? "#FF5470" : "#4EE3FF") : "#2A2160" }} />
+      ))}
+    </div>
+  );
+}
+
+export function TierBadge({ pct, className = "" }: { pct: number | null; className?: string }) {
+  const t = tierOf(pct);
+  if (!t) return null;
+  return (
+    <span
+      className={`inline-block border-2 border-black px-1.5 py-1 font-arcade text-[9px] uppercase leading-none text-ink-950 ${className}`}
+      style={{ background: t.color }}
+    >
+      {t.label}
+    </span>
+  );
+}
+
+function ResultBanner({ r }: { r: AnswerResult }) {
+  if (!r.valid) {
+    return (
+      <div className="animate-shake border-[3px] border-bad bg-bad/10 p-4">
+        <div className="font-arcade text-sm text-bad">{r.timed_out ? "Time's up" : "Not on the list"}</div>
+        {r.typed && <p className="mt-2 text-ink-300">“{r.typed}” isn&apos;t one of the valid answers. 0 points.</p>}
+      </div>
+    );
+  }
+  const t = tierOf(r.pct);
+  return (
+    <div className="animate-pop border-[3px] p-4" style={{ borderColor: t?.color, background: `${t?.color}1A` }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <TierBadge pct={r.pct} />
+          <span className="text-2xl font-bold">{r.answer}</span>
+        </div>
+        <span className="font-arcade text-lg" style={{ color: t?.color }}>
+          +{fmt(r.points)}
+        </span>
+      </div>
+      <p className="mt-2 text-ink-300">
+        {r.corrected && (
+          <>
+            You typed “{r.typed}”, autocorrected.{" "}
+          </>
+        )}
+        About <b className="text-white">{fmtPct(r.pct)}</b> of players give this answer.
+      </p>
+    </div>
+  );
+}
+
+export function RevealLists({ top, rare, total, mine }: { top: RevealItem[]; rare: RevealItem[]; total: number; mine?: string | null }) {
+  const max = Math.max(...top.map((x) => x.pct), 1);
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div>
+        <div className="label">Most common</div>
+        <ul className="space-y-1.5">
+          {top.map((x) => (
+            <li key={x.answer} className="relative border-2 border-ink-700 bg-ink-900 px-2.5 py-1.5">
+              <span className="absolute inset-y-0 left-0 bg-tier-common/20" style={{ width: `${(x.pct / max) * 100}%` }} />
+              <span className="relative flex justify-between gap-2">
+                <span className={x.answer === mine ? "font-bold text-brand" : ""}>{x.answer}</span>
+                <span className="text-ink-300">{fmtPct(x.pct)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <div className="label">Rare finds</div>
+        <ul className="space-y-1.5">
+          {rare.map((x) => (
+            <li key={x.answer} className="flex justify-between gap-2 border-2 border-ink-700 bg-ink-900 px-2.5 py-1.5">
+              <span className={x.answer === mine ? "font-bold text-brand" : "text-tier-legendary"}>✦ {x.answer}</span>
+              <span className="text-ink-300">{fmtPct(x.pct)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-1.5 text-xs text-ink-400">{total} valid answers in all.</p>
+      </div>
     </div>
   );
 }
@@ -345,43 +396,43 @@ function Intro({
   const [busy, setBusy] = useState(false);
   return (
     <div className="mx-auto max-w-xl animate-fade-up text-center">
-      <span className="chip border-brand/30 bg-brand/10 text-brand-400">
-        {mode === "ranked" ? `Daily quiz #${quizNumber} · ranked` : "Practice mode · unranked"}
+      <span className="chip border-brand text-brand">
+        {mode === "ranked" ? `Daily hunt #${quizNumber} · ranked` : "Practice · unranked"}
       </span>
-      <h1 className="mt-5 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-        {mode === "ranked" ? (resuming ? "Pick up where you left off" : "Ready for today's ten?") : "Warm up your brain"}
+      <h1 className="arcade-title mt-6 text-2xl leading-relaxed sm:text-3xl">
+        {mode === "ranked" ? (resuming ? "Continue?" : "Ready, player 1?") : "Warm-up round"}
       </h1>
-      <p className="mt-4 text-ink-300">
+      <p className="mt-5 text-lg text-ink-300">
         {mode === "ranked"
-          ? "10 questions, 15 seconds each. Faster correct answers earn more points. You get one official attempt, and the clock runs on our servers."
-          : "Questions from past daily quizzes. Same rules, but it won't affect your ranking, stats or streak."}
+          ? "10 open prompts, 30 seconds each. Type any valid answer. Obvious answers score a little, rare ones score big. One official run a day, timed on our servers."
+          : "Prompts from the practice pool. Same rules, but it won't touch your ranking, stats or streak."}
       </p>
       <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-3 text-center">
         {[
-          ["10", "questions"],
-          ["15s", "per question"],
-          ["10,000", "max score"],
+          ["10", "prompts"],
+          ["30s", "each"],
+          ["1,000", "per rare find"],
         ].map(([v, l]) => (
           <div key={l} className="card p-3">
-            <div className="font-display text-xl font-bold">{v}</div>
-            <div className="text-xs text-ink-400">{l}</div>
+            <div className="font-arcade text-base text-brand">{v}</div>
+            <div className="mt-1.5 text-sm text-ink-400">{l}</div>
           </div>
         ))}
       </div>
       <button
-        className="btn-primary mt-8 px-10 py-3.5 text-base"
+        className="btn-primary mt-10 px-10 py-4 text-sm"
         disabled={busy}
         onClick={() => {
           setBusy(true);
           onStart();
         }}
       >
-        {busy ? "Loading…" : resuming ? "Resume" : "Start"}
+        {busy ? "Loading…" : resuming ? "Resume" : "Press start"}
       </button>
       {mode === "ranked" && (
-        <p className="mt-4 text-xs text-ink-400">
+        <p className="mt-5 text-sm text-ink-400">
           Want to warm up first?{" "}
-          <Link href="/practice" className="text-brand-400 hover:underline">
+          <Link href="/practice" className="text-brand hover:underline">
             Try practice mode
           </Link>
         </p>
@@ -406,45 +457,56 @@ function useCountUp(target: number, ms = 1200) {
   return v;
 }
 
-function Summary({ s, attemptId }: { s: AttemptSummary; attemptId: string }) {
+function Summary({ s, attemptId, results }: { s: AttemptSummary; attemptId: string; results: AnswerResult[] }) {
   const shown = useCountUp(s.score);
   const ranked = s.mode === "ranked";
-  const verdict =
-    s.correct_count === 10 ? "Flawless!" : s.correct_count >= 8 ? "Superb" : s.correct_count >= 6 ? "Nicely done" : s.correct_count >= 4 ? "Not bad" : "Tough one";
+  const best = results.filter((r) => r.valid).sort((a, b) => (a.pct ?? 100) - (b.pct ?? 100))[0];
+  const verdict = s.score >= 8000 ? "Legendary run!" : s.score >= 6000 ? "Epic haul" : s.score >= 4000 ? "Nice loot" : s.score >= 2000 ? "Not bad" : "Tough day";
   return (
     <div className="mx-auto max-w-xl animate-fade-up text-center">
-      <span className="chip">{ranked ? "Daily quiz complete" : "Practice complete"}</span>
-      <h1 className="mt-4 font-display text-3xl font-bold">{verdict}</h1>
-      <div className="mt-6 font-display text-7xl font-bold tabular-nums text-gradient">{fmt(shown)}</div>
-      <div className="mt-1 text-sm text-ink-400">out of {fmt(s.max_score)}</div>
+      <span className="chip">{ranked ? "Daily hunt complete" : "Practice complete"}</span>
+      <h1 className="arcade-title mt-6 text-xl sm:text-2xl">{verdict}</h1>
+      <div className="mt-8 font-arcade text-5xl tabular-nums text-brand sm:text-6xl">{fmt(shown)}</div>
+      <div className="mt-3 text-ink-400">out of {fmt(s.max_score)}</div>
 
-      <div className="mt-8 grid grid-cols-3 gap-3">
+      {best && (
+        <div className="card mx-auto mt-6 max-w-sm p-4">
+          <div className="label">Best find</div>
+          <div className="flex items-center justify-center gap-3">
+            <TierBadge pct={best.pct} />
+            <span className="text-xl font-bold">{best.answer}</span>
+            <span className="text-ink-400">{fmtPct(best.pct)}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 grid grid-cols-3 gap-3">
         <div className="card p-3">
-          <div className="font-display text-2xl font-bold">{s.correct_count}/10</div>
-          <div className="text-xs text-ink-400">correct</div>
+          <div className="font-arcade text-lg">{s.correct_count}/10</div>
+          <div className="mt-1.5 text-sm text-ink-400">valid</div>
         </div>
         <div className="card p-3">
-          <div className="font-display text-2xl font-bold">{ranked && s.daily_rank ? ordinal(s.daily_rank) : "–"}</div>
-          <div className="text-xs text-ink-400">{ranked ? "today's rank" : "unranked"}</div>
+          <div className="font-arcade text-lg">{ranked && s.daily_rank ? ordinal(s.daily_rank) : "–"}</div>
+          <div className="mt-1.5 text-sm text-ink-400">{ranked ? "today's rank" : "unranked"}</div>
         </div>
         <div className="card p-3">
-          <div className="font-display text-2xl font-bold text-flame">{ranked ? `🔥 ${s.current_streak}` : "–"}</div>
-          <div className="text-xs text-ink-400">day streak</div>
+          <div className="font-arcade text-lg text-flame">{ranked ? s.current_streak : "–"}</div>
+          <div className="mt-1.5 text-sm text-ink-400">day streak</div>
         </div>
       </div>
 
       {s.new_achievements?.length > 0 && (
         <div className="card mt-6 p-4 text-left">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-flame">New achievements</div>
+          <div className="label text-flame">New achievements</div>
           <ul className="space-y-2">
             {s.new_achievements.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 animate-pop">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-flame/10 text-xl">{a.icon}</span>
+              <li key={a.id} className="flex animate-pop items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center border-2 border-flame/50 bg-flame/10 text-xl">{a.icon}</span>
                 <div className="flex-1">
-                  <div className="text-sm font-semibold">{a.name}</div>
-                  <div className="text-xs text-ink-400">{a.description}</div>
+                  <div className="font-semibold">{a.name}</div>
+                  <div className="text-sm text-ink-400">{a.description}</div>
                 </div>
-                {a.reward && <span className="chip border-flame/30 text-flame">Unlocked: {a.reward.name}</span>}
+                {a.reward && <span className="chip border-flame text-flame">Unlocked: {a.reward.name}</span>}
               </li>
             ))}
           </ul>
@@ -455,7 +517,7 @@ function Summary({ s, attemptId }: { s: AttemptSummary; attemptId: string }) {
         {ranked ? (
           <>
             <Link href={`/results/${attemptId}`} className="btn-primary">
-              Review & share
+              Review &amp; share
             </Link>
             <Link href="/leaderboards" className="btn-ghost">
               Leaderboard

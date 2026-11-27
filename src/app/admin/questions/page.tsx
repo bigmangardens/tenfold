@@ -76,7 +76,7 @@ export default async function QuestionsAdmin({
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="text-left text-xs uppercase tracking-wider text-ink-400">
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-ink-700">
               <th className="px-4 py-3">#</th>
               <th className="px-4 py-3">Question</th>
               <th className="px-4 py-3">Category</th>

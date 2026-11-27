@@ -80,14 +80,14 @@ export default async function LeaderboardsPage({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex rounded-xl border border-white/[0.06] bg-ink-900 p-1">
+        <div className="flex rounded-xl border border-ink-700 bg-ink-900 p-1">
           {PERIODS.map(([p, label]) => (
             <Link key={p} href={href({ period: p })} className={`tab ${period === p ? "tab-active" : ""}`}>
               {label}
             </Link>
           ))}
         </div>
-        <div className="flex rounded-xl border border-white/[0.06] bg-ink-900 p-1">
+        <div className="flex rounded-xl border border-ink-700 bg-ink-900 p-1">
           {SCOPES.map(([s, label]) => (
             <Link key={s} href={href({ scope: s })} className={`tab ${scope === s ? "tab-active" : ""}`}>
               {label}
