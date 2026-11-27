@@ -1,100 +1,154 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/supabase/server";
+import { Countdown } from "@/components/Countdown";
+import { LeaderboardTable } from "@/components/LeaderboardTable";
+import { ScoringRules } from "@/components/ScoringRules";
+import { Avatar } from "@/components/Avatar";
+import { CATEGORY_META, fmt } from "@/lib/format";
+import type { LeaderboardRow } from "@/lib/types";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Landing() {
+  const { supabase, user } = await getSessionUser();
+  if (user) redirect("/dashboard");
+
+  const [{ data: info }, { data: top }] = await Promise.all([
+    supabase.rpc("get_today_info"),
+    supabase.rpc("get_leaderboard", { p_period: "daily", p_scope: "global", p_limit: 5 }),
+  ]);
+  const rows = (top ?? []) as LeaderboardRow[];
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="space-y-20">
+      <section className="grid items-center gap-10 pt-4 md:grid-cols-[1.15fr_1fr] md:pt-10">
+        <div className="animate-fade-up">
+          <span className="chip border-brand/30 bg-brand/10 text-brand-400">
+            Quiz #{info?.quiz_number ?? "…"} is live · resets in <Countdown className="font-semibold text-white" />
+          </span>
+          <h1 className="mt-5 font-display text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl">
+            Ten questions.
+            <br />
+            <span className="text-gradient">One shot a day.</span>
+          </h1>
+          <p className="mt-5 max-w-lg text-lg text-ink-300">
+            Every day the whole world gets the same ten general-knowledge questions. Fifteen seconds each. Fast and right
+            wins. Build your streak, dress up your avatar and climb the global board.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/signup" className="btn-primary px-6 py-3 text-base">
+              Play today&apos;s quiz
+            </Link>
+            <Link href="/leaderboards" className="btn-ghost px-6 py-3 text-base">
+              See the leaderboard
+            </Link>
+          </div>
+          <div className="mt-8 flex items-center gap-6 text-sm text-ink-400">
+            <span>
+              <b className="text-white">{fmt(info?.players_today)}</b> played today
+            </span>
+            <span>
+              <b className="text-white">{fmt(info?.total_players)}</b> players
+            </span>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+        <div className="card relative animate-fade-up overflow-hidden p-6 [animation-delay:120ms]">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-brand/20 blur-3xl" />
+          <div className="flex items-center justify-between text-xs text-ink-400">
+            <span className="chip">🧭 Geography</span>
+            <span>Question 4 of 10</span>
+          </div>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
+            <div className="h-full w-[62%] rounded-full bg-gradient-to-r from-brand to-aqua" />
+          </div>
+          <p className="mt-6 font-display text-xl font-semibold">Which of these countries has the most natural lakes?</p>
+          <div className="mt-5 grid gap-2.5">
+            {["Russia", "Canada", "United States", "Finland"].map((o, i) => (
+              <div
+                key={o}
+                className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
+                  i === 1 ? "border-good/50 bg-good/10 text-white" : "border-white/[0.07] bg-white/[0.02] text-ink-200"
+                }`}
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white/[0.06] text-xs font-bold">
+                  {"ABCD"[i]}
+                </span>
+                {o}
+                {i === 1 && <span className="ml-auto font-semibold text-good">+912</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          ["🌍", "One quiz, whole world", "Same ten questions for every player, resetting at midnight UTC."],
+          ["⚡", "Speed counts", "Correct answers score 500 plus a speed bonus of up to 500 more."],
+          ["🔥", "Keep the streak alive", "Play daily to build streaks and unlock rare avatar cosmetics."],
+        ].map(([icon, title, body]) => (
+          <div key={title} className="card p-6">
+            <div className="text-3xl">{icon}</div>
+            <h3 className="mt-3 font-display text-lg font-semibold">{title}</h3>
+            <p className="mt-1.5 text-sm text-ink-300">{body}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-8 md:grid-cols-2">
+        <div>
+          <h2 className="font-display text-2xl font-bold">Today&apos;s top five</h2>
+          <p className="mt-1 text-sm text-ink-400">Live global ranking for quiz #{info?.quiz_number}.</p>
+          <div className="card mt-5 overflow-hidden">
+            <LeaderboardTable rows={rows} compact />
+          </div>
+        </div>
+        <div>
+          <h2 className="font-display text-2xl font-bold">How scoring works</h2>
+          <p className="mt-1 text-sm text-ink-400">Transparent, and validated on the server.</p>
+          <div className="mt-5">
+            <ScoringRules />
+          </div>
+        </div>
+      </section>
+
+      <section className="card flex flex-col items-center gap-6 p-8 text-center md:flex-row md:text-left">
+        <div className="flex -space-x-3">
+          {[
+            { skin: "s2", hair: "bob", hairColor: "auburn", outfitColor: "cyan", background: "ocean", hat: "none" },
+            { skin: "s6", hair: "afro", hairColor: "black", outfitColor: "amber", background: "plum", accessory: "round" },
+            { skin: "s4", hair: "mohawk", hairColor: "neon", outfit: "jacket", outfitColor: "coral", background: "aurora", accessory: "shades" },
+            { skin: "s8", hair: "none", outfit: "robe", hat: "wizard", background: "cosmos", eyes: "star" },
+          ].map((c, i) => (
+            <Avatar key={i} config={c} size={64} className="ring-4 ring-ink-850" />
+          ))}
+        </div>
+        <div className="flex-1">
+          <h3 className="font-display text-xl font-semibold">Make it yours</h3>
+          <p className="mt-1 text-sm text-ink-300">
+            Dozens of free styles, plus rare cosmetics you can only earn by playing: crowns, wizard hats and cosmic
+            backdrops. Nothing to buy, ever.
+          </p>
+        </div>
+        <Link href="/signup" className="btn-primary">
+          Create your player
+        </Link>
+      </section>
+
+      <footer className="flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 text-xs text-ink-400 sm:flex-row">
+        <span>© {new Date().getUTCFullYear()} Tenfold</span>
+        <div className="flex gap-4">
+          {Object.values(CATEGORY_META).map((c) => (
+            <span key={c.label} title={c.label}>
+              {c.icon}
+            </span>
+          ))}
+        </div>
+        <Link href="/how-to-play" className="hover:text-white">
+          How to play
+        </Link>
       </footer>
     </div>
   );
