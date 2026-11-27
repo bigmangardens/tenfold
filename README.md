@@ -46,7 +46,7 @@ Requires Node 20+ and Docker (for the Supabase CLI).
 ```bash
 npm install
 npx supabase start            # starts Postgres, Auth, REST and a local mail inbox (Mailpit)
-cp .env.example .env.local    # fill in the API URL and anon key printed by `supabase start`
+cp .env.example .env.local    # fill in API_URL and PUBLISHABLE_KEY printed by `supabase start`
 npm run dev
 ```
 
@@ -61,15 +61,16 @@ update public.profiles set is_admin = true where username = 'YourName';
 
 ## Production deployment
 
-1. **Supabase**: create a project, then `npx supabase link --project-ref <ref>` and `npx supabase db push`
-   (or paste both migration files into the SQL editor, in order). Run `supabase/seed.sql` for cosmetics,
-   achievements and questions. The demo-player block at the end is optional; delete it for a clean launch.
+1. **Supabase**: create a project, then `npx supabase link --project-ref <ref>` and
+   `npx supabase db push --include-seed` (or paste both migration files, then `supabase/seed.sql`, into the SQL
+   editor, in order). The seed adds cosmetics, achievements and questions. The demo-player block at the end is optional; delete it for a clean launch.
 2. **Auth settings** (Dashboard → Authentication):
    - Enable *Confirm email*.
    - *Site URL*: your production URL. *Redirect URLs*: `https://your-domain/**`.
    - Use a custom SMTP provider for real email volume.
-3. **Vercel**: import the repo and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
-   `NEXT_PUBLIC_SITE_URL`.
+3. **Vercel**: import the repo and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   (`sb_publishable_...`; a legacy anon key in `NEXT_PUBLIC_SUPABASE_ANON_KEY` also works) and `NEXT_PUBLIC_SITE_URL`.
+   The app never needs the secret key: all privileged logic runs inside Postgres functions.
 4. **Optional cron** (Database → Extensions → `pg_cron`):
    ```sql
    select cron.schedule('tenfold-stale', '*/30 * * * *', 'select public.finalize_stale_attempts()');
