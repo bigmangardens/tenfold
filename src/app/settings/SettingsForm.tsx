@@ -139,7 +139,7 @@ export function SettingsForm({ profile, email }: { profile: SettingsProfile; ema
       <section className="card space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">Account</h2>
         <div className="text-sm text-ink-300">
-          Signed in as <span className="text-white">{email}</span>
+          Signed in as <span className="text-white">{email.endsWith("@noemail.tenfold.invalid") ? "username only (no email)" : email}</span>
         </div>
         <div>
           <label className="label">New password</label>

@@ -56,7 +56,7 @@ export function SignupForm() {
           className="input"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="e.g. QuizMaster_9"
+          placeholder="e.g. RareHunter_9"
         />
         <p className="mt-1.5 text-xs text-ink-400">
           {username && !validName && "3–20 letters, numbers or underscores."}
@@ -67,9 +67,12 @@ export function SignupForm() {
       </div>
       <div>
         <label className="label" htmlFor="email">
-          Email
+          Email <span className="normal-case text-ink-400">(optional)</span>
         </label>
-        <input id="email" name="email" type="email" autoComplete="email" required className="input" />
+        <input id="email" name="email" type="email" autoComplete="email" className="input" placeholder="Leave blank to play without one" />
+        <p className="mt-1.5 text-xs text-ink-400">
+          No email? You&apos;ll log in with your username. Without an email we can&apos;t reset a forgotten password, so keep it safe.
+        </p>
       </div>
       <div>
         <label className="label" htmlFor="password">

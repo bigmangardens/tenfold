@@ -15,9 +15,9 @@ export function LoginForm({ next }: { next: string }) {
         <input type="hidden" name="next" value={next} />
         <div>
           <label className="label" htmlFor="email">
-            Email
+            Username or email
           </label>
-          <input id="email" name="email" type="email" autoComplete="email" required className="input" defaultValue={state?.email} />
+          <input id="email" name="email" type="text" autoComplete="username" autoCapitalize="off" required className="input" defaultValue={state?.email} />
         </div>
         <div>
           <div className="flex items-center justify-between">

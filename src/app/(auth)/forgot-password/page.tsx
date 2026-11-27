@@ -9,7 +9,7 @@ import { SubmitButton } from "../SubmitButton";
 export default function ForgotPasswordPage() {
   const [state, action] = useActionState(requestPasswordReset, undefined);
   return (
-    <AuthShell title="Reset your password" subtitle="We'll email you a secure link.">
+    <AuthShell title="Reset your password" subtitle="We'll email you a secure link. Accounts made without an email can't be reset.">
       <form action={action} className="space-y-4">
         <div>
           <label className="label" htmlFor="email">
