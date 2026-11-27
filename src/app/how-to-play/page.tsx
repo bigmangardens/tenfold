@@ -6,7 +6,7 @@ export const metadata = { title: "How to play" };
 export default function HowToPlay() {
   const steps = [
     ["1", "Ten prompts at 00:00 UTC", "Open prompts like “Name a country in Europe” or “Name a Beatles song”, across geography, science, history, sport, film, books, tech and more."],
-    ["2", "Type any valid answer", "You get 30 seconds per prompt. Small typos are autocorrected to the closest valid answer, so spelling won't cost you."],
+    ["2", "Guess until you hit", "You get 30 seconds per prompt and unlimited guesses. Your first valid answer locks in, and small typos are autocorrected."],
     ["3", "Go rare, score big", "The fewer players who give your answer, the more it's worth. “France” scores a little. “Liechtenstein” scores big."],
     ["4", "One official run a day", "Your first run each day is ranked. Practice mode never touches your ranking. Keep a streak, unlock cosmetics, climb the boards."],
   ];

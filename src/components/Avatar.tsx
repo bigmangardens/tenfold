@@ -57,6 +57,8 @@ export const BACKGROUND: Record<string, string[]> = {
   aurora: ["#7C5CFF", "#22D3EE", "#34D399"],
   gold: ["#B45309", "#F59E0B", "#FDE68A"],
   cosmos: ["#0B1026", "#2E1065"],
+  dusk: ["#140F36", "#3A1D52", "#FF8A3D"],
+  starlit: ["#0B0820", "#2A2160"],
 };
 
 function Background({ v }: { v: string }) {
@@ -73,7 +75,7 @@ function Background({ v }: { v: string }) {
         </linearGradient>
       </defs>
       <rect width="120" height="120" fill={`url(#${id})`} />
-      {v === "cosmos" && (
+      {(v === "cosmos" || v === "starlit") && (
         <g fill="#fff">
           {[
             [14, 18, 1.2],

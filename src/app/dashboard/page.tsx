@@ -6,7 +6,7 @@ import { Countdown } from "@/components/Countdown";
 import { Flag } from "@/components/Flag";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { Empty, SectionTitle, Stat } from "@/components/Stat";
-import { StreakFlame } from "@/components/StreakFlame";
+import { LoginStreak, StreakFlame } from "@/components/StreakFlame";
 import { fmt, formatDate, ordinal } from "@/lib/format";
 import type { Dashboard, LeaderboardRow } from "@/lib/types";
 
@@ -25,6 +25,11 @@ export default async function DashboardPage() {
   const d = data as Dashboard;
   const t = d.today;
   const s = d.stats;
+  const login = d.login ?? { login_streak: 0, best_login_streak: 0 };
+  const nextLogin = [
+    { days: 7, name: "Arcade dusk" },
+    { days: 30, name: "Starlit" },
+  ].find((m) => login.login_streak < m.days);
 
   return (
     <div className="space-y-8">
@@ -96,17 +101,26 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="card flex flex-col justify-between p-6">
-          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">Current streak</div>
-          <div className="my-3">
-            <StreakFlame days={s.current_streak} size="lg" />
+        <div className="card flex flex-col justify-between gap-4 p-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="label">Play streak</div>
+              <StreakFlame days={s.current_streak} size="lg" />
+            </div>
+            <div>
+              <div className="label">Login streak</div>
+              <LoginStreak days={login.login_streak} />
+            </div>
           </div>
           <p className="text-sm text-ink-300">
             {t.streak_at_risk && t.status !== "finished"
-              ? "🔥 Play today to keep your streak alive!"
+              ? "🔥 Play today to keep your play streak alive!"
               : s.current_streak > 0
-                ? `Best ever: ${s.best_streak} day${s.best_streak === 1 ? "" : "s"}. Come back tomorrow to make it ${s.current_streak + 1}.`
-                : "Play today to start a streak."}
+                ? `Best play streak: ${s.best_streak} day${s.best_streak === 1 ? "" : "s"}.`
+                : "Play today to start a play streak."}{" "}
+            {nextLogin
+              ? `Log in ${nextLogin.days - login.login_streak} more day${nextLogin.days - login.login_streak === 1 ? "" : "s"} in a row to unlock the ${nextLogin.name} background.`
+              : `Best login streak: ${login.best_login_streak} days.`}
           </p>
         </div>
       </section>
@@ -115,7 +129,7 @@ export default async function DashboardPage() {
         <Stat label="Games played" value={fmt(s.games_played)} hint={`${fmt(s.practice_games)} practice`} />
         <Stat label="Average score" value={fmt(s.average_score)} hint={`${s.accuracy}% valid answers`} />
         <Stat label="Best score" value={fmt(s.best_score)} hint={`${s.perfect_games} perfect`} accent="#B4A2FF" />
-        <Stat label="Best streak" value={`${s.best_streak}d`} hint="consecutive days" accent="#FFB547" />
+        <Stat label="Best streaks" value={`${s.best_streak}d`} hint={`play · login best ${login.best_login_streak}d`} accent="#FF8A3D" />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">

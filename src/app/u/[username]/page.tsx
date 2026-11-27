@@ -64,11 +64,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       </section>
 
       {p.stats ? (
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Stat label="Games played" value={fmt(p.stats.games_played)} hint={`${p.stats.accuracy}% valid answers`} />
           <Stat label="Average score" value={fmt(p.stats.average_score)} />
           <Stat label="Highest score" value={fmt(p.stats.best_score)} hint={`${p.stats.perfect_games} perfect`} accent="#B4A2FF" />
           <Stat label="Longest streak" value={`${p.stats.best_streak}d`} hint={`current ${p.stats.current_streak}d`} accent="#FFB547" />
+          <Stat label="Login streak" value={`${p.stats.login_streak ?? 0}d`} hint={`best ${p.stats.best_login_streak ?? 0}d`} accent="#4EE3FF" />
         </section>
       ) : (
         <div className="card p-6 text-center text-sm text-ink-400">🔒 {p.username} keeps their stats private.</div>

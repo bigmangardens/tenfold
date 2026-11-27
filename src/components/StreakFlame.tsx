@@ -22,3 +22,23 @@ export function StreakFlame({ days, size = "md" }: { days: number; size?: "md" |
     </div>
   );
 }
+
+/** Pixel calendar with the number of consecutive days the player has logged in. */
+export function LoginStreak({ days }: { days: number }) {
+  const lit = days > 0;
+  return (
+    <div className="flex items-center gap-2">
+      <svg viewBox="0 0 10 10" width={40} height={40} shapeRendering="crispEdges" aria-hidden>
+        <rect x="1" y="2" width="8" height="7" fill={lit ? "#4EE3FF" : "#3A2F7E"} />
+        <rect x="1" y="2" width="8" height="2" fill={lit ? "#FF5470" : "#2A2160"} />
+        <rect x="2" y="1" width="1" height="2" fill="#F4F1FF" />
+        <rect x="7" y="1" width="1" height="2" fill="#F4F1FF" />
+        <rect x="3" y="5" width="1" height="1" fill="#0B0820" />
+        <rect x="5" y="5" width="1" height="1" fill="#0B0820" />
+        <rect x="3" y="7" width="1" height="1" fill="#0B0820" />
+        <rect x="5" y="7" width="1" height="1" fill={lit ? "#FFC83D" : "#0B0820"} />
+      </svg>
+      <span className={`font-display font-bold tabular-nums text-4xl ${lit ? "text-aqua" : "text-ink-400"}`}>{days}</span>
+    </div>
+  );
+}

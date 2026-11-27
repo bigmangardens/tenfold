@@ -78,6 +78,7 @@ export type Dashboard = {
     accuracy: number;
     practice_games: number;
   };
+  login?: { login_streak: number; best_login_streak: number } | null;
   recent_achievements: Achievement[];
   achievement_count: number;
   achievement_total: number;
@@ -102,6 +103,8 @@ export type PublicProfile = {
     best_streak: number;
     perfect_games: number;
     accuracy: number;
+    login_streak?: number;
+    best_login_streak?: number;
   } | null;
   ranks: { daily: number | null; weekly: number | null; alltime: number | null } | null;
   achievements: Achievement[] | null;
@@ -128,8 +131,13 @@ export type QuestionPayload = {
 export type RevealItem = { answer: string; pct: number };
 export type Reveal = { total: number; top: RevealItem[]; rare: RevealItem[] };
 
+/** Returned when a guess isn't on the list and time remains: keep guessing. */
+export type RetryResult = { position: number; retry: true; typed: string; wrong_guesses: number };
+
 export type AnswerResult = {
   position: number;
+  retry?: false;
+  wrong_guesses?: number;
   valid: boolean;
   timed_out: boolean;
   typed: string | null;

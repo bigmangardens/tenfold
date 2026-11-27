@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_META, fmt, friendlyError, ordinal } from "@/lib/format";
 import { fmtPct, tierOf } from "@/lib/rarity";
-import type { AnswerResult, AttemptSummary, HistoryCell, QuestionPayload, RevealItem } from "@/lib/types";
+import type { AnswerResult, AttemptSummary, HistoryCell, QuestionPayload, RetryResult, RevealItem } from "@/lib/types";
 
 type Phase = "intro" | "loading" | "question" | "feedback" | "summary" | "error";
 type Mode = "ranked" | "practice";
@@ -21,6 +21,9 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
   const [results, setResults] = useState<AnswerResult[]>([]);
   const [summary, setSummary] = useState<AttemptSummary | null>(null);
   const [text, setText] = useState("");
+  const [misses, setMisses] = useState<string[]>([]);
+  const [missFlash, setMissFlash] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30000);
   const [history, setHistory] = useState<HistoryCell[]>(Array(10).fill(null));
@@ -41,6 +44,7 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
       setPhase("loading");
       setResult(null);
       setText("");
+      setMisses([]);
       textRef.current = "";
       const { data, error } = await supabase.rpc("next_question", { p_attempt: id });
       if (error) return fail(error);
@@ -69,7 +73,7 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
   };
 
   const submit = useCallback(
-    async (answer: string | null) => {
+    async (answer: string | null, final = false) => {
       if (!attemptId || !q || submittingRef.current) return;
       submittingRef.current = true;
       setSubmitting(true);
@@ -77,6 +81,7 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
         p_attempt: attemptId,
         p_position: q.position,
         p_text: answer,
+        p_final: final,
       });
       submittingRef.current = false;
       setSubmitting(false);
@@ -84,6 +89,16 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
         // Already answered (e.g. double submit or expired on reload): move on.
         if (/ALREADY_ANSWERED|QUESTION_NOT_SERVED/.test(error.message)) return loadNext(attemptId);
         return fail(error);
+      }
+      if ((data as RetryResult).retry) {
+        // Not on the list and time remains: clear the box and keep guessing.
+        const miss = data as RetryResult;
+        setMisses((m) => [miss.typed, ...m].slice(0, 6));
+        setMissFlash((n) => n + 1);
+        setText("");
+        textRef.current = "";
+        requestAnimationFrame(() => inputRef.current?.focus());
+        return;
       }
       const r = data as AnswerResult;
       setResult(r);
@@ -109,7 +124,7 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
       setTimeLeft(left);
       if (left <= 0) {
         clearInterval(t);
-        submit(textRef.current.trim() || null);
+        submit(textRef.current.trim() || null, true);
       }
     }, 100);
     return () => clearInterval(t);
@@ -224,6 +239,7 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
                   }}
                 >
                   <input
+                    ref={inputRef}
                     autoFocus
                     value={text}
                     onChange={(e) => {
@@ -238,15 +254,28 @@ export function QuizRunner({ mode, resuming = false, quizNumber }: { mode: Mode;
                     enterKeyHint="send"
                     placeholder="Type a rare answer…"
                     aria-label="Your answer"
-                    className="input flex-1 py-3 text-xl"
+                    key={missFlash}
+                    className={`input flex-1 py-3 text-xl ${missFlash ? "animate-shake border-bad" : ""}`}
                     disabled={submitting}
                   />
                   <button className="btn-primary px-6 py-4" disabled={submitting || !text.trim()}>
                     {submitting ? "Checking…" : "Lock in"}
                   </button>
                 </form>
+                {misses.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2" aria-live="polite">
+                    <span className="text-sm text-bad">✗ Not on the list, keep guessing:</span>
+                    {misses.map((m, i) => (
+                      <span key={`${m}-${i}`} className="border-2 border-bad/50 px-1.5 text-sm text-ink-400 line-through">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <TimeBar pct={pct} urgent={urgent} />
-                <p className="mt-3 text-center text-sm text-ink-400">Spelling slips are autocorrected to the closest valid answer.</p>
+                <p className="mt-3 text-center text-sm text-ink-400">
+                  Guess as many times as you like before the clock runs out. Your first valid answer locks in, and typos are autocorrected.
+                </p>
               </>
             )}
 
@@ -319,8 +348,10 @@ function ResultBanner({ r }: { r: AnswerResult }) {
   if (!r.valid) {
     return (
       <div className="animate-shake border-[3px] border-bad bg-bad/10 p-4">
-        <div className="font-arcade text-sm text-bad">{r.timed_out ? "Time's up" : "Not on the list"}</div>
-        {r.typed && <p className="mt-2 text-ink-300">“{r.typed}” isn&apos;t one of the valid answers. 0 points.</p>}
+        <div className="font-arcade text-sm text-bad">Time&apos;s up</div>
+        <p className="mt-2 text-ink-300">
+          {r.typed ? `“${r.typed}” isn't one of the valid answers. ` : "No valid answer in time. "}0 points.
+        </p>
       </div>
     );
   }
@@ -404,7 +435,7 @@ function Intro({
       </h1>
       <p className="mt-5 text-lg text-ink-300">
         {mode === "ranked"
-          ? "10 open prompts, 30 seconds each. Type any valid answer. Obvious answers score a little, rare ones score big. One official run a day, timed on our servers."
+          ? "10 open prompts, 30 seconds each. Keep guessing until you hit a valid answer. Obvious answers score a little, rare ones score big. One official run a day, timed on our servers."
           : "Prompts from the practice pool. Same rules, but it won't touch your ranking, stats or streak."}
       </p>
       <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-3 text-center">
